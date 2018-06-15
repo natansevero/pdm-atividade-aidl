@@ -8,14 +8,15 @@ import android.os.IBinder;
 import android.os.RemoteException;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
+import android.widget.EditText;
 import android.widget.TextView;
 
 import com.example.natan.startedservicecep.IMyAidlInterface;
 
 public class MainActivity extends AppCompatActivity {
 
+    private EditText mCepEditText;
     private TextView mResultTextView;
     private IMyAidlInterface mIMyAidlInterface;
     private ServiceConnection mServiceConnection;
@@ -25,7 +26,9 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        mCepEditText = (EditText) findViewById(R.id.et_cep);
         mResultTextView = (TextView) findViewById(R.id.tv_result);
+
         onInitService();
     }
 
@@ -59,7 +62,7 @@ public class MainActivity extends AppCompatActivity {
     public void callService(View view) {
         try {
             if(mIMyAidlInterface != null) {
-                mResultTextView.setText(mIMyAidlInterface.cepDatas("01001000"));
+                mResultTextView.setText(mIMyAidlInterface.cepDatas(mCepEditText.getText().toString()));
             }
         } catch (RemoteException e) {
             e.printStackTrace();

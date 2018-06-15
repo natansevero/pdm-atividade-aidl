@@ -6,6 +6,7 @@ import android.os.IBinder;
 import android.os.Message;
 import android.os.RemoteException;
 import android.support.annotation.Nullable;
+import android.util.Log;
 
 import org.json.JSONObject;
 
@@ -28,15 +29,19 @@ public class MyService extends Service {
         }
 
         @Override
-        public String cepDatas(String cep) throws RemoteException {
-            Intent intent = new Intent(getApplicationContext(), MyService.class);
-            startService(intent);
+        public String cepDatas(final String cep) throws RemoteException {
+            new Thread() {
+                @Override
+                public void run() {
+                    mCepDatas = doRequest(cep);
+                }
+            }.start();
 
-            if(mCepDatas != null) {
-                return mCepDatas;
+            while (mCepDatas == null) {
+                Log.d("WHILE", "...");
             }
 
-            return "";
+            return mCepDatas;
         }
 
     };
@@ -48,35 +53,12 @@ public class MyService extends Service {
             public void run() {
                 try {
                     String cep = intent.getStringExtra(Intent.EXTRA_TEXT);
-
-                    String url = "https://viacep.com.br/ws/"+ cep +"/json/";
-
-                    URL u = new URL(url);
-                    HttpURLConnection urlConnection = (HttpURLConnection) u.openConnection();
-
-                    InputStream in = urlConnection.getInputStream();
-                    BufferedReader streamReader = new BufferedReader(new InputStreamReader(in, "UTF-8"));
-
-                    StringBuilder responseStrBuilder = new StringBuilder();
-
-                    String inputStr;
-                    while((inputStr = streamReader.readLine()) != null){
-                        responseStrBuilder.append(inputStr);
-                    }
-
-                    JSONObject json = new JSONObject(responseStrBuilder.toString());
-
-                    String anwser = json.toString();
-
-                    synchronized (lock) {
-                        mCepDatas = anwser;
-                    }
+                    String anwser = doRequest(cep);
 
                     Message msg = new Message();
                     msg.obj = anwser;
 
                     MainActivity.myHandler.sendMessage(msg);
-
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -84,6 +66,41 @@ public class MyService extends Service {
         }.start();
 
         return super.onStartCommand(intent, flags, startId);
+    }
+
+    public String doRequest(String cep) {
+        HttpURLConnection urlConnection = null;
+
+        try {
+            String url = "https://viacep.com.br/ws/"+ cep +"/json/";
+
+            URL u = new URL(url);
+            urlConnection = (HttpURLConnection) u.openConnection();
+
+            InputStream in = urlConnection.getInputStream();
+            BufferedReader streamReader = new BufferedReader(new InputStreamReader(in, "UTF-8"));
+
+            StringBuilder responseStrBuilder = new StringBuilder();
+
+            String inputStr;
+            while((inputStr = streamReader.readLine()) != null){
+                responseStrBuilder.append(inputStr);
+            }
+
+            JSONObject json = new JSONObject(responseStrBuilder.toString());
+
+            return json.toString();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if(urlConnection != null) {
+                urlConnection.disconnect();
+            }
+        }
+
+        return "";
+
     }
 
     @Nullable
